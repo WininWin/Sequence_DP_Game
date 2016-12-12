@@ -39,6 +39,10 @@ var current_level_delete_count;
 var path_for_alignment = {};
 
 
+/** @public */var USE_SCORE_TABLE = 0;
+/** @public */var score_table;
+
+
 /**
  * Create view of matrix table by given two sequences 
  * {Object} matrix object created by function get_maximum_seq_alignment_score
@@ -49,6 +53,9 @@ function create_sequence_matrix(matrix, seq1, seq2){
 
 	var number_of_rows = matrix.table.length;
 	var number_of_cols = matrix.table[0].length+1;
+	$("#seq_one_str").text("Sequence W: " + seq1);
+	$("#seq_two_str").text("Sequence V : " + seq2);
+	
 
 	$(".matrix_table").append('<div class = \"row\" id=\"seq1_letters\"></div>');
 
@@ -71,7 +78,7 @@ function create_sequence_matrix(matrix, seq1, seq2){
 		}
 
 		else if(c===1){
-			$('#seq1_letters').append('<div class=\"col-xs-1 col-md-1\">W</div>');
+			$('#seq1_letters').append('<div class=\"col-xs-1 col-md-1\"><B>W</B></div>');
 		}
 		else{
 			$('#seq1_letters').append('<div class= \"col-xs-1 col-md-1 letter' + seq1.charAt(c-2) + '\">' + seq1.charAt(c-2) + '</div>');
@@ -80,7 +87,7 @@ function create_sequence_matrix(matrix, seq1, seq2){
 	}
 
 
-	$('#row0').append('<div class=\"col-xs-1 col-md-1\">V</div>')
+	$('#row0').append('<div class=\"col-xs-1 col-md-1\"><B>V</B></div>')
 	for(var i = 0; i < number_of_rows; i++){
 		for(var j = 0; j < number_of_cols-1;j++){
 
@@ -264,7 +271,7 @@ function mouse_focus_event(matrix, seq1, seq2){
 				else{
 
 
-					$("#info4").hide().text("Message : You should solve the previous one!").fadeIn();
+					$("#info4").hide().text("Message : You should solve a previous entry first").fadeIn();
 				}
 
 
@@ -431,7 +438,7 @@ function score_check(input, score){
 		return 1;
 	}
 	else{
-		$("#message").hide().text("Wrong").show();
+		$("#message").hide().text("Incorrect. Try again.").show();
 		return 0;
 
 	}
@@ -462,7 +469,7 @@ function recreate(seq_matrix){
 	var seq1_array = seq1.split("");
 	var seq2_array = seq2.split("");
 
-	seq_matrix = get_maximum_seq_alignment_score(seq1_array, seq2_array, match_score, mismatch_score, gap_penalty);
+	seq_matrix = get_maximum_seq_alignment_score(seq1_array, seq2_array, match_score, mismatch_score, gap_penalty, USE_SCORE_TABLE, score_table);
 	path_for_alignment = {};
 	create_sequence_matrix(seq_matrix, seq1, seq2);
 	initial_fill_gap(seq_matrix, seq1, seq2);
@@ -476,11 +483,11 @@ function recreate(seq_matrix){
 
 /**
  * Control the difficulty 
- * @param {Jquery object} target button
- * @param {Object} matrix table that will be change 
- * @param {Number} length of level, level 1 : 10 level 2 : 12 level 3 : 15
- * @param {Number} probability of mutation, level 1 : 20%, level 2 : 30%, level 3 : 40%
- * @param {Number} maximum possible deletion, level 1 : 2, level 2 : 3, level 3 : 4 
+ * @param (Jquery object) target button
+ * @param (Object) matrix table that will be change 
+ * @param (Number) length of level, level 1 : 10 level 2 : 12 level 3 : 15
+ * @param (Number) probability of mutation, level 1 : 20%, level 2 : 30%, level 3 : 40%
+ * @param (Number) maximum possible deletion, level 1 : 2, level 2 : 3, level 3 : 4 
  */
 function level_change(target, table, length, prob, delete_num){
 		$('.level_buttons .btn[id*="level_"]').removeClass("active");
@@ -509,7 +516,9 @@ function go_back_to_table(){
  */
 function init(){
 
-
+		 $("#score_table").hide();
+		  $("#change_score_table").hide();
+	 $("#use_fixed_score").hide();
 
 	current_level_length = LEVEL_ONE_LENGTH;
 	current_level_prob = LEVEL_ONE_MUTATE_SAME;
@@ -522,7 +531,25 @@ function init(){
 	var seq1_array = seq1.split("");
 	var seq2_array = seq2.split("");
 
-	seq_matrix = get_maximum_seq_alignment_score(seq1_array, seq2_array, match_score, mismatch_score, gap_penalty);
+	//get score_table
+	score_table = get_score_table();
+	for(var key in score_table){
+			$("#score_table_body").append("<tr id=\'row" + key + "\'><th class = \'letter" + key + "\'>"+ key +"</th></tr>");
+			for(var inner_key in score_table[key]){
+				$("#row"+key).append('<td><input id = \"input'+ key + inner_key + '\"type=\"number\" value=\"'+ score_table[key][inner_key] + '\"></td>');
+				
+				(function(key1, key2){
+					$("#input" + key1 + key2).change(function(){
+
+					$("#input" + key2 + key1).val($("#input" + key1 + key2).val());
+				});
+				})(key, inner_key);
+					
+			}
+	}
+
+
+	seq_matrix = get_maximum_seq_alignment_score(seq1_array, seq2_array, match_score, mismatch_score, gap_penalty, USE_SCORE_TABLE,score_table);
 
 	create_sequence_matrix(seq_matrix, seq1, seq2);
 	initial_fill_gap(seq_matrix,seq1, seq2);
@@ -560,7 +587,68 @@ function init(){
 
 	});
 
+
+$('#use_score_talbe').on('click', function(){
+		$('#use_score_talbe').hide();
+		$("#change_score_table").show();
+		USE_SCORE_TABLE = 1;
+		$("#info1").hide();
+		$("#info2").hide();
+		$("#score_table").show();
+		$("#use_fixed_score").show();
+		
+		recreate(seq_matrix);
+	});
+
+	$('#use_fixed_score').on('click', function(){
+		$('#use_score_talbe').show();
+		 $("#change_score_table").hide();
+		USE_SCORE_TABLE = 0;
+		$("#info1").show();
+		$("#info2").show();
+		$("#score_table").hide();
+		$("#use_fixed_score").hide();
+		
+		recreate(seq_matrix);
+	});
 	
+
+	$("#change_score_table").on('click', function(){
+		var not_positive_on_diag = 0;
+		var not_negative_on_other = 0;
+
+		for(var key in score_table){
+			for(var inner_key in score_table){
+				score_table[key][inner_key] = parseInt($("#input" + key + inner_key).val());
+				if(key == inner_key){
+					if($("#input" + key + inner_key).val() < 0){
+						not_positive_on_diag = 1;
+						break;
+					}
+				}
+				else{
+					if($("#input" + key + inner_key).val() > 0 ){
+						not_negative_on_other = 1;
+						break;
+					}
+				}
+
+			}
+		}
+
+		if(not_positive_on_diag){
+			$("#info4").hide().text("The diagonal elements should be constrained to be positive").fadeIn('slow').delay(1500).fadeOut('slow');
+		}
+		else if(not_negative_on_other){
+			$("#info4").hide().text("The off-diagnoal elements should be constrained to be negative").fadeIn('slow').delay(1500).fadeOut('slow');
+
+		}
+
+		else{
+			recreate(seq_matrix);
+		}
+
+	});
 
 
 }
